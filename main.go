@@ -41,7 +41,7 @@ func main() {
 	if img.Height() < screenH {
 		imgbg, err := img.Copy()
 		checkError(err)
-		imgbg.Resize(float64(screenH)/float64(imgbg.Height()), vips.KernelAuto)
+		imgbg.ResizeWithVScale(1, float64(screenH)/float64(imgbg.Height()), vips.KernelAuto)
 		imgbg.GaussianBlur(40)
 		for x := screenW - imgbg.Width(); x >= -imgbg.Width(); x -= imgbg.Width() {
 			wp.Insert(imgbg, x, (screenH-imgbg.Height())/2, true, &transColor)
