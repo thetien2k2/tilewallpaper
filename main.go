@@ -27,6 +27,10 @@ func main() {
 	vips.LoggingSettings(nil, vips.LogLevelCritical)
 	vips.Startup(nil)
 	defer vips.Shutdown()
+	ep := vips.NewDefaultPNGExportParams()
+	ep.Quality = 100
+	ep.Lossless = true
+
 	wp, err := vips.Black(screenW, screenH)
 	checkError(err)
 	transColor := vips.ColorRGBA{R: 0, G: 0, B: 0, A: 0}
@@ -48,12 +52,10 @@ func main() {
 			vs = float64(screenW) / float64(img.Width())
 		}
 		imgbg.ResizeWithVScale(vs, float64(screenH)/float64(imgbg.Height()), vips.KernelAuto)
-		imgbg.GaussianBlur(40)
-		for x := screenW - imgbg.Width(); x >= -imgbg.Width(); x -= imgbg.Width() {
-			wp.Insert(imgbg, x, (screenH-imgbg.Height())/2, true, &transColor)
-		}
-		wp.ExtractArea(wp.Width()-screenW, 0, screenW, screenH)
+		imgbg.GaussianBlur(100)
+		wp = imgbg
 	}
+
 	// tile image from right
 	for x := screenW - img.Width(); x >= -img.Width(); x -= img.Width() {
 		wp.Insert(img, x, (screenH-img.Height())/2, true, &transColor)
@@ -61,9 +63,6 @@ func main() {
 	// crop to screen size
 	wp.ExtractArea(wp.Width()-screenW, 0, screenW, screenH)
 
-	ep := vips.NewDefaultPNGExportParams()
-	ep.Quality = 100
-	ep.Lossless = true
 	epbytes, _, err := wp.Export(ep)
 	checkError(err)
 	err = os.WriteFile(fmt.Sprintf("%v.png", time.Now().UnixNano()), epbytes, 0644)
