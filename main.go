@@ -31,39 +31,40 @@ func main() {
 	ep.Quality = 100
 	ep.Lossless = true
 
-	wp, err := vips.Black(screenW, screenH)
-	checkError(err)
 	transColor := vips.ColorRGBA{R: 0, G: 0, B: 0, A: 0}
 	img, err := vips.NewImageFromFile(fn)
 	checkError(err)
 
+	imgbg, err := img.Copy()
+	checkError(err)
+	vs := 1.0
+	if img.Width() > screenW {
+		vs = float64(img.Width()) / float64(screenW)
+	} else {
+		vs = float64(screenW) / float64(img.Width())
+	}
+	imgbg.ResizeWithVScale(vs, float64(screenH)/float64(imgbg.Height()), vips.KernelAuto)
+
+	if img.Height() < screenH {
+		imgbg.GaussianBlur(100)
+	}
+
 	// resize image to screen heigh
 	if img.Height() > screenH {
-		img.Resize(float64(screenH)/float64(img.Height()), vips.KernelAuto)
-	}
-	// create gaussian blur background
-	if img.Height() < screenH {
-		imgbg, err := img.Copy()
+		err = img.Resize(float64(screenH)/float64(img.Height()), vips.KernelAuto)
 		checkError(err)
-		vs := 1.0
-		if img.Width() > screenW {
-			vs = float64(img.Width()) / float64(screenW)
-		} else {
-			vs = float64(screenW) / float64(img.Width())
-		}
-		imgbg.ResizeWithVScale(vs, float64(screenH)/float64(imgbg.Height()), vips.KernelAuto)
-		imgbg.GaussianBlur(100)
-		wp = imgbg
 	}
 
 	// tile image from right
 	for x := screenW - img.Width(); x >= -img.Width(); x -= img.Width() {
-		wp.Insert(img, x, (screenH-img.Height())/2, true, &transColor)
+		err = imgbg.Insert(img, x, (screenH-img.Height())/2, false, &transColor)
+		checkError(err)
 	}
-	// crop to screen size
-	wp.ExtractArea(wp.Width()-screenW, 0, screenW, screenH)
 
-	epbytes, _, err := wp.Export(ep)
+	// crop to screen size
+	imgbg.ExtractArea(imgbg.Width()-screenW, 0, screenW, screenH)
+
+	epbytes, _, err := imgbg.Export(ep)
 	checkError(err)
 	err = os.WriteFile(fmt.Sprintf("%v.png", time.Now().UnixNano()), epbytes, 0644)
 	checkError(err)
