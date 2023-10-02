@@ -34,31 +34,35 @@ func main() {
 	transColor := vips.ColorRGBA{R: 0, G: 0, B: 0, A: 0}
 	img, err := vips.NewImageFromFile(fn)
 	checkError(err)
-
 	imgbg, err := img.Copy()
 	checkError(err)
-	vs := 1.0
-	if img.Width() > screenW {
-		vs = float64(img.Width()) / float64(screenW)
-	} else {
-		vs = float64(screenW) / float64(img.Width())
-	}
-	imgbg.ResizeWithVScale(vs, float64(screenH)/float64(imgbg.Height()), vips.KernelAuto)
+	imgbg.ResizeWithVScale(float64(screenW)/float64(img.Width()), float64(screenH)/float64(img.Height()), vips.KernelAuto)
+	err = imgbg.GaussianBlur(100)
+	checkError(err)
 
-	if img.Height() < screenH {
-		imgbg.GaussianBlur(100)
-	}
-
-	// resize image to screen heigh
-	if img.Height() > screenH {
-		err = img.Resize(float64(screenH)/float64(img.Height()), vips.KernelAuto)
+	switch {
+	case img.Width() > img.Height(): // landscape
+		if img.Width() > screenW {
+			err = img.Resize(float64(screenW)/float64(img.Width()), vips.KernelAuto)
+			checkError(err)
+		}
+		if img.Height() > screenH {
+			err = img.Resize(float64(screenH)/float64(img.Height()), vips.KernelAuto)
+			checkError(err)
+		}
+		err = imgbg.Insert(img, (screenW-img.Width())/2, (screenH-img.Height())/2, false, &transColor)
 		checkError(err)
-	}
-
-	// tile image from right
-	for x := screenW - img.Width(); x >= -img.Width(); x -= img.Width() {
-		err = imgbg.Insert(img, x, (screenH-img.Height())/2, false, &transColor)
-		checkError(err)
+	case img.Width() <= img.Height(): // portrait or square
+		// resize image to screen heigh
+		if img.Height() > screenH {
+			err = img.Resize(float64(screenH)/float64(img.Height()), vips.KernelAuto)
+			checkError(err)
+		}
+		// tile image from right
+		for x := screenW - img.Width(); x >= -img.Width(); x -= img.Width() {
+			err = imgbg.Insert(img, x, (screenH-img.Height())/2, false, &transColor)
+			checkError(err)
+		}
 	}
 
 	// crop to screen size
